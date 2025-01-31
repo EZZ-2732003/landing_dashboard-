@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحليل بيانات بيانتي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+    <style>
+        * {
+            font-family: "Tajawal", sans-serif;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideInLeft {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        body {
+            animation: fadeIn 0.8s ease-out;
+            background: url(background.svg);
+            min-height: 100vh;
+            direction: rtl;
+        }
+        
+        .dashboard-header {
+            animation: fadeInUp 0.6s ease-out;
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(45deg, #2c3e50, #3498db);
+            color: white;
+            width: 100%;
+        }
+        
+        .kpi-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            padding: 2rem;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .kpi-card {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+            text-align: center;
+        }
+        
+        .kpi-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .kpi-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 0.5rem 0;
+        }
+        
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            padding: 2rem;
+            width: 70%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .chart-card {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .data-table-container {
+            padding: 2rem;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .table-hover-effect tr {
+            transition: all 0.3s ease;
+        }
+        
+        .table-hover-effect tr:hover {
+            transform: translateX(-10px);
+            background: #f8f9fa;
+        }
+        
+        #loader {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .analysis-section {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin: 2rem auto;
+            padding: 2rem;
+            width: 100%;
+            max-width: 1200px;
+        }
+        
+        @media (max-width: 768px) {
+            .kpi-container,
+            .chart-grid,
+            .data-table-container {
+                padding: 1rem;
+                grid-template-columns: 1fr;
+            }
+            .kpi-value {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1 class="dashboard-header">لوحة تحليل بيانات منصة بيانتي</h1>
+
+    <div id="loader">
+        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">جاري التحميل...</span>
+        </div>
+    </div>
+
+    <div class="kpi-container" style="display: none;">
+        <div class="kpi-card">
+            <div class="kpi-value" id="totalEntries">0</div>
+            <div class="kpi-label">إجمالي التسجيلات</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" id="uniqueEmirates">0</div>
+            <div class="kpi-label">إمارة مميزة</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" id="topEmirate">-</div>
+            <div class="kpi-label">الإمارة الأكثر نشاطًا</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value" id="uniqueFacilities">0</div>
+            <div class="kpi-label">منشأة مميزة</div>
+        </div>
+    </div>
+
+    <div class="chart-grid" style="display: none;">
+        <div class="chart-card">
+            <h5 class="text-center mb-3">توزيع المنشآت حسب الإمارة</h5>
+            <canvas id="emirateChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h5 class="text-center mb-3">توزيع المسميات الوظيفية</h5>
+            <canvas id="titleChart"></canvas>
+        </div>
+    </div>
+
+    <div class="analysis-section" style="display: none;">
+        <h4 class="mb-4">تحليل تفصيلي</h4>
+        <div class="row">
+            <div class="col-md-6">
+                <h5>الإحصائيات حسب الإمارة</h5>
+                <ul class="list-group" id="emirateStats"></ul>
+            </div>
+            <div class="col-md-6">
+                <h5>المسميات الأكثر شيوعًا</h5>
+                <ul class="list-group" id="titleStats"></ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="data-table-container">
+        <div class="table-responsive">
+            <table id="dataTable" class="table table-hover table-hover-effect" style="display: none">
+                <thead class="table-primary">
+                    <div class="text-center mb-3">
+                        <button class="btn btn-success" onclick="exportToExcel()">📊 تصدير إلى Excel</button>
+                        <button class="btn btn-primary" onclick="exportToWord()">📝 تصدير إلى Word</button>
+                    </div>
+                    <tr>
+                        <th>الاسم</th>
+                        <th>المسمى الوظيفي</th>
+                        <th>رقم البيانتي</th>
+                        <th>البريد الإلكتروني</th>
+                        <th>اسم المنشأة</th>
+                        <th>الإمارة</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.26/jspdf.plugin.autotable.min.js"></script>
+
+
+    <script>
+        const webAppUrl = "https://script.google.com/macros/s/AKfycbxn23HeejWYWK1iOfMwXwvn115G5mcqEoTmYEEOqLJS5IjIQN3B-9vv_4EjOAQhrTrHjQ/exec";
+
+        async function fetchData() {
+            try {
+                const response = await fetch(webAppUrl);
+                const data = await response.json();
+                const loader = document.getElementById('loader');
+
+                // تهيئة كائنات التحليل
+                const analysis = {
+                    emirates: {},
+                    titles: {},
+                    facilities: new Set(),
+                    totalEntries: data.length,
+                    topEmirate: {
+                        name: '',
+                        count: 0
+                    }
+                };
+
+                // معالجة البيانات
+                data.forEach((row) => {
+                    const cleanedRow = Object.fromEntries(
+                        Object.entries(row).map(([k, v]) => [k.trim(), v])
+                    );
+
+                    // تحديث إحصائيات الإمارة
+                    const emirate = cleanedRow.Emirate || 'غير معروف';
+                    analysis.emirates[emirate] = (analysis.emirates[emirate] || 0) + 1;
+
+                    // تحديث إحصائيات المسمى الوظيفي
+                    const title = cleanedRow.Title || 'غير معروف';
+                    analysis.titles[title] = (analysis.titles[title] || 0) + 1;
+
+                    // تتبع المنشآت الفريدة
+                    if (cleanedRow['Facility name']) {
+                        analysis.facilities.add(cleanedRow['Facility name']);
+                    }
+                });
+
+                // حساب المقاييس
+                analysis.uniqueEmirates = Object.keys(analysis.emirates).length;
+                analysis.uniqueFacilities = analysis.facilities.size;
+                analysis.topEmirate = Object.entries(analysis.emirates)
+                    .reduce((acc, [name, count]) => count > acc.count ? {
+                        name,
+                        count
+                    } : acc, {
+                        name: '',
+                        count: 0
+                    });
+
+                // تحديث واجهة المستخدم
+                document.getElementById('totalEntries').textContent = analysis.totalEntries;
+                document.getElementById('uniqueEmirates').textContent = analysis.uniqueEmirates;
+                document.getElementById('topEmirate').textContent = analysis.topEmirate.name;
+                document.getElementById('uniqueFacilities').textContent = analysis.uniqueFacilities;
+
+                // إنشاء الرسوم البيانية
+                createChart('emirateChart', 'bar', analysis.emirates, 'المنشآت حسب الإمارة');
+                createChart('titleChart', 'pie', analysis.titles, 'توزيع المسميات');
+
+                // عرض القوائم التفصيلية
+                populateStats('emirateStats', analysis.emirates);
+                populateStats('titleStats', analysis.titles);
+
+                // إظهار العناصر المخفية
+                document.querySelectorAll('.kpi-container, .chart-grid, .analysis-section')
+                    .forEach(el => el.style.display = 'block');
+
+                // تهيئة جدول البيانات
+                $('#dataTable').DataTable({
+                    language: {
+                        url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/ar.json'
+                    }
+                }).clear().rows.add(data.map(row => [
+                    row.Name || 'N/A',
+                    row.Title || 'N/A',
+                    row.Bayanati || 'N / A ',
+
+                    row.Email || 'N/A',
+                    row.Facility || 'N / A ',
+
+                    row.Emirate || 'N/A'
+                ])).draw();
+
+                document.getElementById('dataTable').style.display = 'table';
+                loader.style.display = 'none';
+
+            } catch (error) {
+                console.error('حدث خطأ:', error);
+                document.getElementById('loader').innerHTML =
+                    '<p class="text-danger">فشل تحميل البيانات. يرجى المحاولة لاحقًا.</p>';
+            }
+        }
+
+        function createChart(canvasId, type, data, label) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            new Chart(ctx, {
+                type: type,
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        label: label,
+                        data: Object.values(data),
+                        backgroundColor: [
+                            '#3498db', '#2ecc71', '#e74c3c', '#f39c12',
+                            '#9b59b6', '#1abc9c', '#34495e', '#e67e22'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: type === 'pie' ? 'left' : 'top'
+                        }
+                    },
+                    animation: {
+                        duration: 2000
+                    }
+                }
+            });
+        }
+
+        function exportToExcel() {
+            let table = document.getElementById("dataTable");
+            let workbook = XLSX.utils.table_to_book(table, {
+                sheet: "Sheet1"
+            });
+            XLSX.writeFile(workbook, "بيانات_بيانتي.xlsx");
+        }
+
+        function exportToPDF() {
+            const {
+                jsPDF
+            } = window.jspdf;
+            let doc = new jsPDF();
+
+            doc.text("تقرير بيانات بيانتي", 10, 10);
+
+            doc.autoTable({
+                html: '#dataTable',
+                startY: 20
+            });
+
+            doc.save("بيانات_بيانتي.pdf");
+        }
+
+        function exportToWord() {
+            let table = document.getElementById("dataTable");
+            let content = "<table border='1'>" + table.innerHTML + "</table>";
+
+            let blob = new Blob(['\ufeff', content], {
+                type: 'application/msword'
+            });
+
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "بيانات_بيانتي.doc";
+            link.click();
+        }
+
+        function populateStats(listId, data) {
+            const list = document.getElementById(listId);
+            list.innerHTML = '';
+
+            Object.entries(data)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([key, value]) => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    li.innerHTML = `
+                        ${key}
+                        <span class="badge bg-primary rounded-pill">${value}</span>
+                    `;
+                    list.appendChild(li);
+                });
+        }
+
+        fetchData();
+    </script>
+</body>
+
+</html>
